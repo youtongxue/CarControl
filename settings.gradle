@@ -1,0 +1,20 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        google()
+        mavenCentral()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+
+        //DialogX
+        //doc -> https://github.com/kongzue/DialogX
+        maven { url 'https://jitpack.io' }      //增加 jitPack Maven 仓库
+    }
+}
+rootProject.name = "carcontrol"
+include ':app'
