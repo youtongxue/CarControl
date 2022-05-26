@@ -6,16 +6,6 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <Button
-        android:id="@+id/test_btn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="52dp"
-        android:layout_marginBottom="224dp"
-        android:text="测试"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
-
     <RelativeLayout
         android:id="@+id/info_rel"
         android:layout_width="match_parent"
@@ -29,9 +19,10 @@
             android:id="@+id/btn_menu"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignParentStart="true"
+            android:layout_alignParentStart="false"
+            android:layout_alignParentEnd="true"
             android:layout_centerVertical="true"
-            android:layout_marginStart="40dp"
+            android:layout_marginEnd="40dp"
             android:background="@null"
             app:srcCompat="@drawable/ic_menu" />
     </RelativeLayout>
@@ -43,8 +34,10 @@
         android:text="CarControl"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.332"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.181" />
 
     <Button
         android:id="@+id/scanDevice_btn"
@@ -52,12 +45,54 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="60dp"
+        android:layout_marginBottom="252dp"
         android:text="扫描蓝牙"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.059"
+        app:layout_constraintHorizontal_bias="0.033"
         app:layout_constraintStart_toStartOf="parent" />
+
+    <ImageButton
+        android:id="@+id/imageButton"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_marginBottom="20dp"
+        android:background="@drawable/item_shape_radio_c"
+        app:layout_constraintBottom_toTopOf="@+id/imageButton2"
+        app:layout_constraintStart_toStartOf="@+id/imageButton2"
+        app:srcCompat="@drawable/ic_up" />
+
+    <ImageButton
+        android:id="@+id/imageButton2"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_marginStart="100dp"
+        android:layout_marginBottom="100dp"
+        android:background="@drawable/item_shape_radio_c"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:srcCompat="@drawable/ic_dow" />
+
+    <ImageButton
+        android:id="@+id/imageButton3"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_marginEnd="20dp"
+        android:background="@drawable/item_shape_radio_c"
+        app:layout_constraintBottom_toBottomOf="@+id/imageButton4"
+        app:layout_constraintEnd_toStartOf="@+id/imageButton4"
+        app:srcCompat="@drawable/ic_left" />
+
+    <ImageButton
+        android:id="@+id/imageButton4"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_marginEnd="180dp"
+        android:layout_marginBottom="100dp"
+        android:background="@drawable/item_shape_radio_c"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:srcCompat="@drawable/ic_right" />
 
     <LinearLayout
         android:id="@+id/emoji_linear"
@@ -92,29 +127,38 @@
             android:orientation="vertical">
 
             <RelativeLayout
+                android:id="@+id/menu_title"
                 android:layout_width="match_parent"
                 android:layout_height="40dp"
                 android:background="@color/teal_200">
+
+                <TextView
+                    android:id="@+id/menu_title_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_centerInParent="true"
+                    android:text="蓝牙连接"
+                    android:textColor="@color/white" />
 
                 <ImageButton
                     android:id="@+id/close_btn"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_alignParentTop="true"
                     android:layout_alignParentEnd="true"
-                    android:layout_centerInParent="true"
-                    android:layout_marginEnd="16dp"
+                    android:layout_centerVertical="true"
+                    android:layout_marginEnd="40dp"
                     android:background="@null"
                     app:srcCompat="@drawable/ic_close" />
             </RelativeLayout>
 
-            <androidx.viewpager2.widget.ViewPager2
-                android:id="@+id/emoji_viewpager"
+            <FrameLayout
+                android:id="@+id/menu_layout"
                 android:layout_width="300dp"
                 android:layout_height="match_parent"
-                android:background="@color/cardview_dark_background">
+                android:background="@color/white">
 
-            </androidx.viewpager2.widget.ViewPager2>
+            </FrameLayout>
+
         </LinearLayout>
 
     </LinearLayout>

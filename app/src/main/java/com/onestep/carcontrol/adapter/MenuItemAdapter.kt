@@ -2,6 +2,7 @@ package com.onestep.carcontrol.adapter
 
 import android.content.Context
 import android.graphics.drawable.Drawable
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -32,14 +33,19 @@ class MenuItemAdapter(var context: Context, val data: List<Drawable>) : Recycler
         return data.size
     }
 
+
+    /**
+     * 设置item的监听事件的接口
+     */
+    interface OnMyItemClickListener {
+        fun myClick(pos: Int)
+    }
+    //需要外部访问，所以需要设置set方法，方便调用
     private var listener: OnMyItemClickListener? = null
     fun setOnMyItemClickListener(listener: OnMyItemClickListener?) {
         this.listener = listener
     }
 
-    interface OnMyItemClickListener {
-        fun myClick(pos: Int)
-    }
 
 
     override fun onBindViewHolder(holder: MyViewHolders, position: Int) {
@@ -62,6 +68,8 @@ class MenuItemAdapter(var context: Context, val data: List<Drawable>) : Recycler
     }
 
     fun refreshBg(viewPagerPosition: Int, lastPosition: Int) {
+        Log.e("Adapter", "点击回调传入 position > > > $viewPagerPosition . $lastPosition")
+
         this.pos = viewPagerPosition
         //notifyDataSetChanged()//更新全部数据
 

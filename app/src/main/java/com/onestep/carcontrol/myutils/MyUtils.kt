@@ -1,6 +1,7 @@
 package com.onestep.carcontrol.myutils
 
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.location.LocationManager
@@ -72,6 +73,23 @@ object MyUtils {
     fun utilToast(context: Context, string: String) {
         Toast.makeText(context,string, Toast.LENGTH_SHORT).show()
     }
+
+    /**
+     * 蓝牙配对绑定
+     * @param dev
+     * @return
+     */
+    fun createBond(dev: BluetoothDevice?): Boolean {
+        try {
+            val createBondMethod = BluetoothDevice::class.java.getMethod("createBond")
+            return createBondMethod.invoke(dev) as Boolean
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return false
+    }
+
+
 
 
 }

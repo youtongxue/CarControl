@@ -5,28 +5,27 @@ import android.app.AlertDialog
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothSocket
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.drawable.Drawable
-import android.os.Build
-import android.os.Bundle
+import android.os.*
 import android.provider.Settings
 import android.util.Log
 import android.view.View
-import android.widget.LinearLayout
-import android.widget.RelativeLayout
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
+import androidx.fragment.app.FragmentTransaction
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.viewpager2.adapter.FragmentStateAdapter
-import androidx.viewpager2.widget.ViewPager2
 import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.Permission
 import com.hjq.permissions.XXPermissions
@@ -37,8 +36,11 @@ import com.kongzue.dialogx.style.MaterialStyle
 import com.onestep.carcontrol.adapter.MenuItemAdapter
 import com.onestep.carcontrol.adapter.ScanBluetoothDeviceListAdapter
 import com.onestep.carcontrol.databinding.ActivityMainBinding
+import com.onestep.carcontrol.entity.ScanBluetoothDevice
+import com.onestep.carcontrol.fragment.MenuOneFragment
+import com.onestep.carcontrol.fragment.MenuSecondFragment
 import com.onestep.carcontrol.myutils.MyUtils
-import androidx.activity.result.ActivityResultLauncher as ActivityResultLauncher
+import java.io.IOException
 
 
 /**
@@ -65,7 +67,23 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     private lateinit var menuLayout: ConstraintLayout.LayoutParams
     private lateinit var statueLayout: ConstraintLayout.LayoutParams
     private var menuItemList: MutableList<Drawable> = ArrayList() //EmojiMini 图片
+    private var temp: Int = 0
+    private var menuFragmentOne: Fragment? = null
+    private var menuFragmentTwo: Fragment? =null
+    private lateinit var transaction: FragmentTransaction
+    private lateinit var fragmentManager: FragmentManager
+    private lateinit var fragmentOne: MenuOneFragment
 
+
+
+    //handler
+    public val mBaseHandler: Handler = object : Handler(Looper.myLooper()!!) {
+        override fun handleMessage(msg: Message) {
+            when (msg.what) {
+
+            }
+        }
+    }
 
     @RequiresApi(Build.VERSION_CODES.M)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -88,6 +106,10 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         menuLayout = binding.emojiLinear.layoutParams as ConstraintLayout.LayoutParams
         statueLayout = binding.infoRel.layoutParams as ConstraintLayout.LayoutParams
 
+        //fragment
+        fragmentManager = supportFragmentManager
+
+
         initMenuItem()
 
         //注册蓝牙扫描接收广播
@@ -97,6 +119,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         filter1.addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
         filter1.addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
         mContext.registerReceiver(bluetoothBroadcastReceiver, filter1)
+
+
 
     }
 
@@ -186,20 +210,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                             return@setButton false
                         }
             }
-
-//            when (it.resultCode) {
-//                -1 -> {
-//                    //显示 2 秒
-//                    PopTip.show("定位开启成功").showLong()
-//                }
-//                0 -> {
-//                    PopTip.show("定位打开失败", "重试").showLong()
-//                        .setButton { _, _ -> //点击“重试”按钮回调
-//                            gpsLauncher.launch(enableGPSIntent)
-//                            return@setButton false
-//                        }
-//                }
-//            }
         }
     }
 
@@ -225,7 +235,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
      * @doc https://developer.android.google.cn/guide/topics/connectivity/bluetooth/find-bluetooth-devices
      * @date 2022/05/22
      * */
-    class BluetoothBroadcastReceiver : BroadcastReceiver() {
+    inner class BluetoothBroadcastReceiver : BroadcastReceiver() {
         private var mFlag: Int = 0
         private val logTAG = "broadCast"
         private lateinit var mCurDevice: BluetoothDevice
@@ -235,6 +245,11 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         private val scanBluetoothDeviceList: MutableList<BluetoothDevice> = mutableListOf()//存放扫描到的蓝牙设备对象
         //在Kotlin中listOf()为不可变列表，mutableListOf()为可变列表
         private val scanBluetoothDeviceRssiList: MutableList<Short> = mutableListOf()//扫描到的蓝牙设备Rssi值
+
+        //扫描设备，实列化
+        private var device: ScanBluetoothDevice? = null
+        private val scanBlueList: MutableList<ScanBluetoothDevice> = mutableListOf()//存放扫描到的蓝牙设备对象
+
 
         @SuppressLint("MissingPermission")
         override fun onReceive(context: Context, intent: Intent) {
@@ -247,19 +262,24 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                     //实例化扫描到的设备，如果为空则结束
                     val scanDevice: BluetoothDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE) ?: return
 
-                    //获取到的扫描到的设备类型
-                    val btType = scanDevice.type
+                    //扫描到的设备信息
+                    val type = scanDevice.type
+                    val name = if (scanDevice.name == null) { "null" } else { scanDevice.name }
+                    val address = scanDevice.address
+                    val rssi = intent.extras!!.getShort(BluetoothDevice.EXTRA_RSSI)
+
                     //这儿设定的是，如果蓝牙设备为 低功耗设备，或者未知类型的蓝牙设备则return
-                    if (btType == BluetoothDevice.DEVICE_TYPE_LE || btType == BluetoothDevice.DEVICE_TYPE_UNKNOWN) {
+                    if (type == BluetoothDevice.DEVICE_TYPE_LE || type == BluetoothDevice.DEVICE_TYPE_UNKNOWN) {
                         return
                     }
-                    Log.e(logTAG, "scanBluetoothDevice name=" + scanDevice.name + " address=" + scanDevice.address
-                    )
+                    device = ScanBluetoothDevice(name, address, rssi, type)
+                    scanBlueList.add(device!!)
+
                     //向数列表添加蓝牙设备对象
-                    scanBluetoothDeviceList.add(scanDevice)
-                    val rssi = intent.extras!!.getShort(BluetoothDevice.EXTRA_RSSI)
-                    scanBluetoothDeviceRssiList.add(rssi)
-                    scanBluetoothDeviceListAdapter?.notifyDataSetChanged()
+                    fragmentOne = fragmentManager.findFragmentById(R.id.menu_layout) as MenuOneFragment
+                    fragmentOne.initScanDeviceRec(scanBlueList, context)
+                    Log.e(logTAG, "扫描到设备： name=$name address=$address rssi=$rssi type=$type")
+
                 }
 
                 BluetoothDevice.ACTION_BOND_STATE_CHANGED -> {
@@ -296,7 +316,20 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                 }
             }
         }
+
+        fun refreshUI(scanBluetoothDevice: MutableList<ScanBluetoothDevice>) {
+            val msg = Message.obtain()
+            msg.what = 1
+            msg.obj = scanBluetoothDevice
+            mBaseHandler.sendMessage(msg)
+        }
     }
+
+    /**
+     * 连接蓝牙设备
+     *
+     * */
+
 
 
     /**
@@ -387,7 +420,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
      * */
     @SuppressLint("UseCompatLoadingForDrawables")
     fun initMenuItem() {
-        var temp: Int = 0
+        //设置默认fragment
+        changeFragment(0)
+
         //设置 RecyclerView的 布局方式（方向）
         val layManager = LinearLayoutManager(this)//实例化 LayoutManager
         layManager.orientation = LinearLayoutManager.VERTICAL
@@ -409,26 +444,12 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         adapter.setOnMyItemClickListener(object : MenuItemAdapter.OnMyItemClickListener {
             override fun myClick(pos: Int) {
                 MyUtils.utilToast(this@MainActivity, "点击 ： $pos")
-                binding.emojiViewpager.currentItem = pos//ViewPager滑动到指定页面， 在 ViewPager 的滑动监听回调方法 OnPageChangeCallback -> 做RecyclerView Item修改背景操作
+                changeFragment(pos)
                 binding.emojiminiRcy.smoothScrollToPosition(pos + 1)//RecyclerView滑动到选择项
+                adapter.refreshBg(pos, temp)
                 temp = pos//设置当前选中页，在refreshBg方法中 更新单个Item -> notifyItemChange() 需要，若 全部更新 -> notifyDataSetChanged() 则不需要设置
-
             }
 
-        })
-
-        //ViewPager 滑动监听回调
-        binding.emojiViewpager.registerOnPageChangeCallback(object :
-            ViewPager2.OnPageChangeCallback() {
-            override fun onPageSelected(position: Int) {
-                Log.e(" >>    >>", "被调用")
-                MyUtils.utilToast(this@MainActivity, "滑动到 $position 页")
-                adapter.refreshBg(position, temp)//向RecyclerView Adapter传入当前ViewPager选中页位置
-                temp = position
-                binding.emojiminiRcy.smoothScrollToPosition(position + 1)
-            }
-
-            //删除了另两个方法 override fun onPageScrollStateChanged , override fun onPageScrolled
         })
 
     }
@@ -436,25 +457,62 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     /**
      * 初始化 menuFragment
      * */
-    //初始化，表情选择的 fragment 页面
-    private fun initFragment() {
-        val list: MutableList<Fragment> = ArrayList()
-        list.add(EmojiOneFragment())
-        list.add(EmojiTwoFragment())
-        //设置预加载的Fragment页面数量，可防止流式布局StaggeredGrid数组越界错误。
-        //binding.emojiViewpager.setOffscreenPageLimit(list.size - 1) //设置适配器
-        val adapter: FragmentStateAdapter = object : FragmentStateAdapter(this) {
-            override fun createFragment(position: Int): Fragment {
-                return list[position]
-            }
+    private fun changeFragment(menuItem: Int) {
+        Log.e(logTAG, "传入 menu Item > > > $menuItem")
+        val layout = binding.menuLayout.id
+        transaction = fragmentManager.beginTransaction()
+        hideAllFragment()
+        when (menuItem) {
+            0 -> {
+                binding.menuTitleText.text = "连接设备"
 
-            override fun getItemCount(): Int {
-                return list.size
+                if (menuFragmentOne == null) {
+                    Log.e(logTAG, "show fragment 1")
+                    menuFragmentOne = MenuOneFragment()
+                    transaction.add(binding.menuLayout.id, menuFragmentOne!!, "Frag1")
+                } else {
+                    transaction.show(menuFragmentOne!!)
+                }
+            }
+            1 -> {
+                binding.menuTitleText.text = "电池信息"
+
+                if (menuFragmentTwo == null) {
+                    menuFragmentTwo = MenuSecondFragment()
+                    transaction.add(layout, menuFragmentTwo!!, "Frag1")
+                } else {
+                    transaction.show(menuFragmentTwo!!)
+                }
+            }
+            else -> {
+                binding.menuTitleText.text = "连接设备"
+                Log.e(logTAG, "第一次进入")
+                menuFragmentOne = MenuOneFragment()
+                transaction.show(menuFragmentOne!!)
             }
         }
-        binding.emojiViewpager.orientation = ViewPager2.ORIENTATION_HORIZONTAL
-        binding.emojiViewpager.adapter = adapter //把适配器添加给ViewPager2
+        transaction.commit()
     }
+
+    //隐藏所有fragment
+    private fun hideAllFragment() {
+        if (menuFragmentOne != null) {
+            transaction.hide(menuFragmentOne!!)
+        }
+        if (menuFragmentTwo != null) {
+            transaction.hide(menuFragmentTwo!!)
+        }
+    }
+
+
+    /**
+     * 配对蓝牙设备
+     * */
+    fun pairDevice(position: Int) {
+        //MyUtils.createBond()
+    }
+
+
 
 
     /**
