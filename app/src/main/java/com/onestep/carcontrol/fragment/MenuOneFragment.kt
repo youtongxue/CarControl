@@ -73,16 +73,8 @@ class MenuOneFragment : Fragment() {
         adapter = ScanBluetoothDeviceAdapter(scanBluetoothDevice)
         _binding.scanDeviceRec.adapter = adapter
 
-        pairDevice()
 
-    }
-
-    @SuppressLint("NotifyDataSetChanged")
-    fun refreshUI() {
-
-    }
-
-    fun pairDevice() {
+        //扫描列表设备点击监听事件
         adapter.setOnMyItemClickListener(object : ScanBluetoothDeviceAdapter.OnMyItemClickListener{
             override fun myClick(pos: Int) {
                 Log.e("click", "点击了 $pos")
@@ -97,6 +89,10 @@ class MenuOneFragment : Fragment() {
 
     }
 
+    @SuppressLint("NotifyDataSetChanged")
+    fun refreshUI() {
+        adapter.notifyDataSetChanged()
 
+    }
 
 }

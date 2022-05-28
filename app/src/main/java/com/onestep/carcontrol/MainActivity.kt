@@ -1,11 +1,9 @@
 package com.onestep.carcontrol
 
 import android.annotation.SuppressLint
-import android.app.AlertDialog
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
-import android.bluetooth.BluetoothSocket
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -34,13 +32,14 @@ import com.kongzue.dialogx.dialogs.MessageDialog
 import com.kongzue.dialogx.dialogs.PopTip
 import com.kongzue.dialogx.style.MaterialStyle
 import com.onestep.carcontrol.adapter.MenuItemAdapter
-import com.onestep.carcontrol.adapter.ScanBluetoothDeviceListAdapter
 import com.onestep.carcontrol.databinding.ActivityMainBinding
 import com.onestep.carcontrol.entity.ScanBluetoothDevice
 import com.onestep.carcontrol.fragment.MenuOneFragment
 import com.onestep.carcontrol.fragment.MenuSecondFragment
 import com.onestep.carcontrol.myutils.MyUtils
 import java.io.IOException
+import java.util.*
+import kotlin.concurrent.thread
 
 
 /**
@@ -57,6 +56,10 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     private lateinit var bluetoothManager: BluetoothManager
     private var bluetoothAdapter: BluetoothAdapter? = null
     private lateinit var bluetoothBroadcastReceiver: BluetoothBroadcastReceiver
+    private var scanBluetoothDeviceList: MutableList<BluetoothDevice> = mutableListOf()//存放扫描到的蓝牙设备对象
+    private var mFlag = 0 //0:表示测试中，1：表示成功，-1：表示失败
+    private lateinit var mPairDevice: BluetoothDevice//需要配对的设备
+
     //打开设置
     private lateinit var bluetoothLauncher: ActivityResultLauncher<Intent>
     private lateinit var gpsLauncher: ActivityResultLauncher<Intent>
@@ -96,6 +99,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         binding.btnMenu.setOnClickListener(this)
         binding.scanDeviceBtn.setOnClickListener(this)
         binding.closeBtn.setOnClickListener(this)
+        binding.sendBtn.setOnClickListener(this)
 
 
         enableBluetooth()
@@ -236,25 +240,16 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
      * @date 2022/05/22
      * */
     inner class BluetoothBroadcastReceiver : BroadcastReceiver() {
-        private var mFlag: Int = 0
         private val logTAG = "broadCast"
-        private lateinit var mCurDevice: BluetoothDevice
-        //蓝牙搜索对话框相关
-        private val scanDialog: AlertDialog? = null
-        private val scanBluetoothDeviceListAdapter: ScanBluetoothDeviceListAdapter? = null
-        private val scanBluetoothDeviceList: MutableList<BluetoothDevice> = mutableListOf()//存放扫描到的蓝牙设备对象
-        //在Kotlin中listOf()为不可变列表，mutableListOf()为可变列表
-        private val scanBluetoothDeviceRssiList: MutableList<Short> = mutableListOf()//扫描到的蓝牙设备Rssi值
-
-        //扫描设备，实列化
-        private var device: ScanBluetoothDevice? = null
-        private val scanBlueList: MutableList<ScanBluetoothDevice> = mutableListOf()//存放扫描到的蓝牙设备对象
+        //蓝牙搜索相关
+        private var device: ScanBluetoothDevice? = null //自定义蓝牙设备信息实体类
+        private val myScanBlueList: MutableList<ScanBluetoothDevice> = mutableListOf()//存放扫描到的蓝牙设备对象
+        private val newDeviceList: MutableList<ScanBluetoothDevice> = mutableListOf()//暂存新的设备
 
 
         @SuppressLint("MissingPermission")
         override fun onReceive(context: Context, intent: Intent) {
-            // This method is called when the BroadcastReceiver is receiving an Intent broadcast.
-            val action: String? = intent.action
+            val action = intent.action
             Log.e(logTAG, "Action received is $action")
             //蓝牙搜索
             when (action) {
@@ -264,7 +259,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
                     //扫描到的设备信息
                     val type = scanDevice.type
-                    val name = if (scanDevice.name == null) { "null" } else { scanDevice.name }
+                    val name = if (scanDevice.name == null) { return } else { scanDevice.name }
                     val address = scanDevice.address
                     val rssi = intent.extras!!.getShort(BluetoothDevice.EXTRA_RSSI)
 
@@ -273,25 +268,39 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                         return
                     }
                     device = ScanBluetoothDevice(name, address, rssi, type)
-                    scanBlueList.add(device!!)
-
-                    //向数列表添加蓝牙设备对象
-                    fragmentOne = fragmentManager.findFragmentById(R.id.menu_layout) as MenuOneFragment
-                    fragmentOne.initScanDeviceRec(scanBlueList, context)
                     Log.e(logTAG, "扫描到设备： name=$name address=$address rssi=$rssi type=$type")
 
+                    //过滤掉重复设备
+                    if (myScanBlueList.size == 0) {
+                        //向数列表添加蓝牙设备对象
+                        myScanBlueList.add(device!!)
+                        fragmentOne = fragmentManager.findFragmentById(R.id.menu_layout) as MenuOneFragment
+                        fragmentOne.initScanDeviceRec(myScanBlueList, context)//初始化设备RecyclerView布局
+                    }else {
+                        var newDevice: ScanBluetoothDevice? = null
+                        myScanBlueList.forEach {
+                            if (it.address != address) {
+                                newDevice = device!!
+                            } else {
+                                return
+                            }
+                        }
+                        myScanBlueList.add(newDevice!!)
+                        scanBluetoothDeviceList.add(scanDevice)
+                        fragmentOne.refreshUI()//刷新RecyclerView
+                    }
                 }
 
                 BluetoothDevice.ACTION_BOND_STATE_CHANGED -> {
                     val btDevice = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
-                    if (mCurDevice != null && btDevice!!.address == mCurDevice.address) {
+                    if (mPairDevice != null && btDevice!!.address == mPairDevice.address) {
                         val state = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, -1)
                         if (state == BluetoothDevice.BOND_NONE) {
-                            //showTip("已取消与设备" + btDevice!!.name + "的配对")
+
                             Log.e(logTAG, "已取消与设备" + btDevice!!.name + "的配对")
                             mFlag = -1
                         } else if (state == BluetoothDevice.BOND_BONDED) {
-                            //showTip("与设备" + btDevice!!.name + "配对成功")
+
                             Log.e(logTAG, "与设备" + btDevice!!.name + "配对成功")
                             mFlag = 1
                         }
@@ -301,15 +310,15 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                 BluetoothAdapter.ACTION_STATE_CHANGED -> {
                     val blueState = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, 0)
                     when (blueState) {
-                        BluetoothAdapter.STATE_TURNING_ON -> Log.i(logTAG, "onReceive---------STATE_TURNING_ON")
+                        BluetoothAdapter.STATE_TURNING_ON -> Log.i(logTAG, "蓝牙状态---------STATE_TURNING_ON")
                         BluetoothAdapter.STATE_ON -> {
-                            Log.e(logTAG, "onReceive---------STATE_ON")
+                            Log.e(logTAG, "蓝牙状态改变---------ON")
                             //showTip("蓝牙当前状态：ON")
 
                         }
-                        BluetoothAdapter.STATE_TURNING_OFF -> Log.i(logTAG, "onReceive---------STATE_TURNING_OFF")
+                        BluetoothAdapter.STATE_TURNING_OFF -> Log.i(logTAG, "蓝牙状态---------STATE_TURNING_OFF")
                         BluetoothAdapter.STATE_OFF -> {
-                            Log.e(logTAG, "onReceive---------STATE_OFF")
+                            Log.e(logTAG, "蓝牙状态改变---------OFF")
                             //showTip("蓝牙当前状态：OFF")
                         }
                     }
@@ -324,11 +333,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
             mBaseHandler.sendMessage(msg)
         }
     }
-
-    /**
-     * 连接蓝牙设备
-     *
-     * */
 
 
 
@@ -349,12 +353,11 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     @SuppressLint("MissingPermission")
     override fun onClick(view: View?) {
         when (view?.id) {
+            //扫描蓝牙设备
             binding.scanDeviceBtn.id -> {
 
                 //检测是否有定位权限
                 // 判断一个或多个权限是否全部授予了
-                Log.e(logTAG, "是否拥有定位权限： FINE: ${XXPermissions.isGranted(this, Permission.ACCESS_FINE_LOCATION)} COARSE: ${XXPermissions.isGranted(this, Permission.ACCESS_COARSE_LOCATION)}")
-
                 if (!XXPermissions.isGranted(this, Permission.ACCESS_FINE_LOCATION) || !XXPermissions.isGranted(this, Permission.ACCESS_COARSE_LOCATION)) {
                     val permissionList: List<String> = listOf(Permission.ACCESS_FINE_LOCATION, Permission.ACCESS_COARSE_LOCATION)
                     XXPermissions.with(this)
@@ -387,6 +390,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                 }
             }
 
+            //弹出扫描蓝牙设备菜单
             binding.btnMenu.id,  binding.closeBtn.id-> {
                 //判断点击menu
                 if (!menu) {
@@ -411,9 +415,12 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                     menu = false
                 }
             }
-        }
-    }
 
+            //发送数据
+            binding.sendBtn.id -> {
+
+            }}
+        }
 
     /**
      * 初始化menu item
@@ -440,7 +447,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
         (binding.emojiminiRcy.itemAnimator as DefaultItemAnimator).removeDuration = 2
 
-        //底部 emoji 预览 RecyclerView Item点击监听
+        //对扫描到的设备设置点击事件
         adapter.setOnMyItemClickListener(object : MenuItemAdapter.OnMyItemClickListener {
             override fun myClick(pos: Int) {
                 MyUtils.utilToast(this@MainActivity, "点击 ： $pos")
@@ -448,6 +455,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                 binding.emojiminiRcy.smoothScrollToPosition(pos + 1)//RecyclerView滑动到选择项
                 adapter.refreshBg(pos, temp)
                 temp = pos//设置当前选中页，在refreshBg方法中 更新单个Item -> notifyItemChange() 需要，若 全部更新 -> notifyDataSetChanged() 则不需要设置
+
+                //配对点击的蓝牙设备
+                pairDevice(pos)
             }
 
         })
@@ -508,10 +518,49 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     /**
      * 配对蓝牙设备
      * */
-    fun pairDevice(position: Int) {
-        //MyUtils.createBond()
-    }
+    @SuppressLint("MissingPermission")
+    fun pairDevice(pos: Int) {
+        mPairDevice = scanBluetoothDeviceList[pos]
 
+        thread {
+            //取消搜索
+            if (bluetoothAdapter?.isDiscovering == true) {
+                bluetoothAdapter?.cancelDiscovery()
+            }
+
+            //当前蓝牙设备未配对，则先进行配对
+            if (mPairDevice.bondState == BluetoothDevice.BOND_NONE) {
+                Log.d(logTAG,"开启线程尝试与 > > > ${mPairDevice.name} 设备配对")
+                val b: Boolean = MyUtils.createBond(mPairDevice)
+                if (!b) {
+                   Log.e(logTAG, "与 > > > ${mPairDevice.name} 设备配对连接失败")
+                    return@thread
+                }
+                Log.d(logTAG,"正在与 > > > ${mPairDevice.name} 进行配对...")
+                //循环等待配对
+                mFlag = 0
+                while (mFlag == 0) {
+                    SystemClock.sleep(250)
+                }
+                if (mFlag == -1) {
+                    Log.e(logTAG, "配对连接失败")
+                    return@thread
+                }
+            }
+
+            //如果传入设备是已经配对的，则直接建立socket连接
+            if (mPairDevice.bondState == BluetoothDevice.BOND_BONDED) {
+                Log.e(logTAG, "尝试与 > > > ${mPairDevice.name} 建立socket连接")
+                try {
+
+                    Log.e(logTAG, "成功与 > > > ${mPairDevice.name} 建立socket连接")
+                } catch (e: IOException) {
+                    Log.e(logTAG, "与 > > > ${mPairDevice.name} 建立socket连接 失败")
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
 
 
 

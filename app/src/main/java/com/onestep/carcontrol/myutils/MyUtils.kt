@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.location.LocationManager
 import android.os.Build
+import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 
@@ -84,7 +85,7 @@ object MyUtils {
             val createBondMethod = BluetoothDevice::class.java.getMethod("createBond")
             return createBondMethod.invoke(dev) as Boolean
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(logTAG, "建立配对方法失败 > > > ${e.printStackTrace().toString()}")
         }
         return false
     }
