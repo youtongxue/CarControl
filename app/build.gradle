@@ -44,6 +44,9 @@ dependencies {
     implementation "com.github.kongzue.DialogX:DialogX:${dialogX_version}"
     // 权限请求框架：https://github.com/getActivity/XXPermissions
     implementation 'com.github.getActivity:XXPermissions:13.6'
+    //
+    implementation 'com.github.niqdev:ipcam-view:2.3.4'
+
 
     implementation 'androidx.core:core-ktx:1.7.0'
     implementation 'androidx.appcompat:appcompat:1.4.1'

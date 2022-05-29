@@ -6,6 +6,14 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
+
+    <com.github.niqdev.mjpeg.MjpegSurfaceView
+        android:id="@+id/VIEW_NAME"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/info_rel" />
+
     <Button
         android:id="@+id/send_btn"
         android:layout_width="wrap_content"
@@ -60,19 +68,6 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.181" />
 
-    <Button
-        android:id="@+id/scanDevice_btn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="252dp"
-        android:text="扫描蓝牙"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.033"
-        app:layout_constraintStart_toStartOf="parent" />
-
     <ImageButton
         android:id="@+id/imageButton"
         android:layout_width="60dp"
@@ -118,10 +113,11 @@
     <LinearLayout
         android:id="@+id/emoji_linear"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:layout_alignParentStart="true"
         android:layout_alignParentEnd="true"
         android:layout_alignParentBottom="true"
+        android:layout_marginEnd="-340.5dp"
         android:gravity="right"
         android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -136,12 +132,6 @@
 
         </androidx.recyclerview.widget.RecyclerView>
 
-        <View
-            android:id="@+id/view"
-            android:layout_width="0.5dp"
-            android:layout_height="match_parent"
-            android:background="@color/black" />
-
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -151,7 +141,17 @@
                 android:id="@+id/menu_title"
                 android:layout_width="match_parent"
                 android:layout_height="40dp"
-                android:background="@color/teal_200">
+                android:background="@color/white">
+
+                <ImageButton
+                    android:id="@+id/refresh_btn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:layout_marginStart="16dp"
+                    android:background="@null"
+                    app:srcCompat="@drawable/ic_refresh" />
 
                 <TextView
                     android:id="@+id/menu_title_text"
@@ -159,7 +159,7 @@
                     android:layout_height="wrap_content"
                     android:layout_centerInParent="true"
                     android:text="蓝牙连接"
-                    android:textColor="@color/white" />
+                    android:textColor="@color/font" />
 
                 <ImageButton
                     android:id="@+id/close_btn"
@@ -167,10 +167,16 @@
                     android:layout_height="wrap_content"
                     android:layout_alignParentEnd="true"
                     android:layout_centerVertical="true"
-                    android:layout_marginEnd="40dp"
+                    android:layout_marginEnd="16dp"
                     android:background="@null"
-                    app:srcCompat="@drawable/ic_close" />
+                    app:srcCompat="@drawable/ic_refresh_black" />
             </RelativeLayout>
+
+            <View
+                android:id="@+id/view3"
+                android:layout_width="match_parent"
+                android:layout_height="0.5dp"
+                android:background="@color/bg" />
 
             <FrameLayout
                 android:id="@+id/menu_layout"

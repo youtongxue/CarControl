@@ -8,13 +8,14 @@
         <entry key="app/src/main/res/drawable/ic_launcher_background.xml" value="0.2" />
         <entry key="app/src/main/res/drawable/ic_menu_background.xml" value="0.331" />
         <entry key="app/src/main/res/drawable/ic_menu_foreground.xml" value="0.331" />
-        <entry key="app/src/main/res/layout/activity_main.xml" value="0.33" />
+        <entry key="app/src/main/res/layout/activity_main.xml" value="0.20695102685624012" />
         <entry key="app/src/main/res/layout/bluetoothdevice_item.xml" value="0.5" />
         <entry key="app/src/main/res/layout/emoji_one.xml" value="0.3296875" />
         <entry key="app/src/main/res/layout/fragment_menu_one.xml" value="0.3296875" />
         <entry key="app/src/main/res/layout/fragment_menu_second.xml" value="0.3296875" />
         <entry key="app/src/main/res/layout/item_scan.xml" value="0.19895833333333332" />
         <entry key="app/src/main/res/layout/menu_item.xml" value="0.67" />
+        <entry key="app/src/main/res/layout/pairedbluetooth_item.xml" value="0.32864583333333336" />
         <entry key="app/src/main/res/mipmap-anydpi-v26/ic_menu.xml" value="0.154" />
         <entry key="app/src/main/res/mipmap-anydpi-v26/ic_menu_round.xml" value="0.154" />
       </map>

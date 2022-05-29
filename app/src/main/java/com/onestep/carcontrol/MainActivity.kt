@@ -9,6 +9,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.drawable.Drawable
+import android.media.MediaPlayer
+import android.net.Uri
 import android.os.*
 import android.provider.Settings
 import android.util.Log
@@ -24,6 +26,9 @@ import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentTransaction
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.github.niqdev.mjpeg.DisplayMode
+import com.github.niqdev.mjpeg.Mjpeg
+import com.github.niqdev.mjpeg.MjpegInputStream
 import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.Permission
 import com.hjq.permissions.XXPermissions
@@ -38,7 +43,7 @@ import com.onestep.carcontrol.fragment.MenuOneFragment
 import com.onestep.carcontrol.fragment.MenuSecondFragment
 import com.onestep.carcontrol.myutils.MyUtils
 import java.io.IOException
-import java.util.*
+import java.io.InputStream
 import kotlin.concurrent.thread
 
 
@@ -48,7 +53,7 @@ import kotlin.concurrent.thread
  * @date 2022/05/22
  * */
 
-class MainActivity : AppCompatActivity(), View.OnClickListener {
+class MainActivity : AppCompatActivity(), View.OnClickListener{
     private val logTAG = "CarControl"
     private lateinit var binding: ActivityMainBinding
     private lateinit var mContext: Context
@@ -57,8 +62,11 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     private var bluetoothAdapter: BluetoothAdapter? = null
     private lateinit var bluetoothBroadcastReceiver: BluetoothBroadcastReceiver
     private var scanBluetoothDeviceList: MutableList<BluetoothDevice> = mutableListOf()//存放扫描到的蓝牙设备对象
+    private val myScanBlueList: MutableList<ScanBluetoothDevice> = mutableListOf()//存放扫描到的蓝牙设备对象
     private var mFlag = 0 //0:表示测试中，1：表示成功，-1：表示失败
     private lateinit var mPairDevice: BluetoothDevice//需要配对的设备
+    //
+    private val mediaPlayer = MediaPlayer()
 
     //打开设置
     private lateinit var bluetoothLauncher: ActivityResultLauncher<Intent>
@@ -97,11 +105,12 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
         mContext = this
         binding.btnMenu.setOnClickListener(this)
-        binding.scanDeviceBtn.setOnClickListener(this)
         binding.closeBtn.setOnClickListener(this)
         binding.sendBtn.setOnClickListener(this)
+        binding.refreshBtn.setOnClickListener(this)
 
 
+        playVideo()//加载视频
         enableBluetooth()
         enableGPS()
         //初始化DialogX弹窗
@@ -221,9 +230,20 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     /**询已经配对的设备
      *@description 查询以配对设备
      * */
+    @RequiresApi(Build.VERSION_CODES.M)
     @SuppressLint("MissingPermission")
     private fun getPairedDevices() {
-        val pairedDevices: Set<BluetoothDevice>? = bluetoothAdapter?.bondedDevices
+        bluetoothManager = mContext.getSystemService(BluetoothManager::class.java)
+        bluetoothAdapter = bluetoothManager.adapter
+
+        val pairedDevices: MutableSet<BluetoothDevice>? = bluetoothAdapter?.bondedDevices
+        val pairBluetoothDevice: MutableList<BluetoothDevice> = mutableListOf()
+        if (pairedDevices != null) {
+            pairBluetoothDevice.addAll(pairedDevices)
+        }
+        fragmentOne = fragmentManager.findFragmentById(R.id.menu_layout) as MenuOneFragment
+        fragmentOne.initPairedDeviceRec(pairBluetoothDevice, this)
+
         pairedDevices?.forEach { device ->
             val deviceName = device.name
             val deviceHardwareAddress = device.address // MAC address
@@ -243,8 +263,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         private val logTAG = "broadCast"
         //蓝牙搜索相关
         private var device: ScanBluetoothDevice? = null //自定义蓝牙设备信息实体类
-        private val myScanBlueList: MutableList<ScanBluetoothDevice> = mutableListOf()//存放扫描到的蓝牙设备对象
-        private val newDeviceList: MutableList<ScanBluetoothDevice> = mutableListOf()//暂存新的设备
 
 
         @SuppressLint("MissingPermission")
@@ -274,6 +292,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                     if (myScanBlueList.size == 0) {
                         //向数列表添加蓝牙设备对象
                         myScanBlueList.add(device!!)
+
                         fragmentOne = fragmentManager.findFragmentById(R.id.menu_layout) as MenuOneFragment
                         fragmentOne.initScanDeviceRec(myScanBlueList, context)//初始化设备RecyclerView布局
                     }else {
@@ -354,7 +373,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     override fun onClick(view: View?) {
         when (view?.id) {
             //扫描蓝牙设备
-            binding.scanDeviceBtn.id -> {
+            binding.refreshBtn.id -> {
 
                 //检测是否有定位权限
                 // 判断一个或多个权限是否全部授予了
@@ -394,7 +413,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
             binding.btnMenu.id,  binding.closeBtn.id-> {
                 //判断点击menu
                 if (!menu) {
-                    //
+                    getPairedDevices()
 
                     menuLayout.marginEnd = 0
                     binding.emojiLinear.layoutParams = menuLayout //使layout更新
@@ -419,8 +438,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
             //发送数据
             binding.sendBtn.id -> {
 
-            }}
+            }
         }
+    }
 
     /**
      * 初始化menu item
@@ -562,6 +582,26 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         }
     }
 
+    /**
+     * 播放视屏
+     * */
+    private fun playVideo() {
+//        binding.webView.webViewClient = WebViewClient()
+//        binding.webView.loadUrl("http://192.168.1.2:8080/?action=streamer")
+
+        val timeOut = 5 //seconds
+        Mjpeg.newInstance()
+            .open("http://192.168.1.2:8080/?action=streamer", timeOut)
+            .subscribe { inputStream: MjpegInputStream? ->
+                binding.VIEWNAME.setSource(inputStream!!)
+                binding.VIEWNAME.setDisplayMode(DisplayMode.BEST_FIT)
+                binding.VIEWNAME.showFps(true)
+            }
+
+//        ExecStart=/usr/local/bin/mjpg_streamer -i "/usr/local/lib/mjpg-streamer/input_uvc.so" -d "/dev/video0" -r "1280x720" -f "35"
+
+    }
+
 
 
     /**
@@ -573,5 +613,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         //unregisterReceiver(receiver)
         mContext.unregisterReceiver(bluetoothBroadcastReceiver)
     }
+
 
 }

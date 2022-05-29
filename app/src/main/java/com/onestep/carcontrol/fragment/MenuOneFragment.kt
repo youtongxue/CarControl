@@ -1,6 +1,7 @@
 package com.onestep.carcontrol.fragment
 
 import android.annotation.SuppressLint
+import android.bluetooth.BluetoothDevice
 import android.content.Context
 import android.os.Bundle
 import android.os.Message
@@ -14,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.onestep.carcontrol.MainActivity
 import com.onestep.carcontrol.R
 import com.onestep.carcontrol.adapter.MenuItemAdapter
+import com.onestep.carcontrol.adapter.PairedBluetoothAdapter
 import com.onestep.carcontrol.adapter.ScanBluetoothDeviceAdapter
 import com.onestep.carcontrol.databinding.FragmentMenuOneBinding
 import com.onestep.carcontrol.entity.ScanBluetoothDevice
@@ -26,7 +28,9 @@ private const val ARG_PARAM2 = "param2"
 class MenuOneFragment : Fragment() {
     private var param1: String? = null
     private var param2: String? = null
-    private lateinit var adapter: ScanBluetoothDeviceAdapter
+    private lateinit var adapterScan: ScanBluetoothDeviceAdapter
+    private lateinit var adapterPaired: PairedBluetoothAdapter
+
 
     //视图
     private lateinit var _binding: FragmentMenuOneBinding
@@ -63,19 +67,21 @@ class MenuOneFragment : Fragment() {
     }
 
 
+    /**
+     * 初始化扫描到的新设备布局
+     * */
     fun initScanDeviceRec(scanBluetoothDevice: MutableList<ScanBluetoothDevice>, context: Context) {
-        _binding.scanDeviceRec
         //设置 RecyclerView的 布局方式（方向）
         val layManager = LinearLayoutManager(context)//实例化 LayoutManager
         layManager.orientation = LinearLayoutManager.VERTICAL
         _binding.scanDeviceRec.layoutManager = layManager
         //设置adapter
-        adapter = ScanBluetoothDeviceAdapter(scanBluetoothDevice)
-        _binding.scanDeviceRec.adapter = adapter
+        adapterScan = ScanBluetoothDeviceAdapter(scanBluetoothDevice)
+        _binding.scanDeviceRec.adapter = adapterScan
 
 
         //扫描列表设备点击监听事件
-        adapter.setOnMyItemClickListener(object : ScanBluetoothDeviceAdapter.OnMyItemClickListener{
+        adapterScan.setOnMyItemClickListener(object : ScanBluetoothDeviceAdapter.OnMyItemClickListener{
             override fun myClick(pos: Int) {
                 Log.e("click", "点击了 $pos")
                 if (activity != null) {
@@ -91,8 +97,26 @@ class MenuOneFragment : Fragment() {
 
     @SuppressLint("NotifyDataSetChanged")
     fun refreshUI() {
-        adapter.notifyDataSetChanged()
+        adapterScan.notifyDataSetChanged()
 
     }
+
+    /**
+     * 初始化已配对设备
+     * */
+    fun initPairedDeviceRec(pairedBluetoothDevice: MutableList<BluetoothDevice>, context: Context) {
+        //设置 RecyclerView的 布局方式（方向）
+        val layManager = LinearLayoutManager(context)//实例化 LayoutManager
+        layManager.orientation = LinearLayoutManager.VERTICAL
+        _binding.pairRec.layoutManager = layManager
+        //设置adapter
+        adapterPaired = PairedBluetoothAdapter(pairedBluetoothDevice)
+        _binding.pairRec.adapter = adapterPaired
+
+
+
+    }
+
+
 
 }
